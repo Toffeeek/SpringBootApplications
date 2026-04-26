@@ -9,15 +9,6 @@ public class SimpleWebSocketApplication {
     public static void main(String[] args)
     {
         SpringApplication.run(SimpleWebSocketApplication.class, args);
-
-
-
-
-
-
-
-
-
     }
 
 }
