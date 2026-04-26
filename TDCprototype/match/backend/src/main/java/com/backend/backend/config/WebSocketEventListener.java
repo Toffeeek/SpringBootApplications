@@ -1,8 +1,9 @@
-package com.simplewebsocket.simplewebsocket.config;
+package com.backend.backend.config;
 
 
-import com.simplewebsocket.simplewebsocket.chat.ChatMessage;
-import com.simplewebsocket.simplewebsocket.chat.MessageType;
+import com.backend.backend.model.Action;
+import com.backend.backend.model.Packet;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -53,18 +54,18 @@ public class WebSocketEventListener
 
         String username = (String) headerAccessor
                 .getSessionAttributes()
-                .get("username");
+                .get("ID");
 
         if(username != null)
         {
             log.info("User disconnected: {}", username);
 
-            var msg = ChatMessage.builder()
-                    .type(MessageType.LEAVE)
-                    .sender(username)
+            var packet = Packet.builder()
+                    .action(Action.LEAVE)
+                    .ID(username)
                     .build();
 
-            messageTemplate.convertAndSend("/topic/public", msg);
+            messageTemplate.convertAndSend("/match/public", packet);
         }
     }
 }

@@ -1,11 +1,9 @@
 package com.simplewebsocketfrontend.simplewebsocketfrontend;
 
-import org.springframework.aop.scope.ScopedProxyUtils;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
-
 import java.lang.reflect.Type;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
@@ -19,14 +17,28 @@ public class ChatClient
         System.out.print("Enter username: ");
         String username = scanner.nextLine();
 
+        /*
+          StandardWebSocketClient() creates a websocket connection and the stompClient
+          object speaks STOMP over the websocket connection
+         */
         WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
 
+        /*
+          configures the stompClient object send Java objects as JSON when sending
+          and turn JSON back to java objects during receiving
+         */
         stompClient.setMessageConverter(new JacksonJsonMessageConverter());
         String url = "ws://localhost:8080/ws";
 
+        /*
+          Creates a session by connecting to server
+        */
         StompSession session = stompClient.connectAsync
         (
             url,
+            /*
+            * Callback handler
+            * */
             new StompSessionHandlerAdapter()
             {
                 @Override
@@ -60,7 +72,8 @@ public class ChatClient
             new StompFrameHandler()
             {
                 @Override
-                public Type getPayloadType(StompHeaders headers) {
+                public Type getPayloadType(StompHeaders headers)
+                {
                     return ChatMessage.class;
                 }
 
@@ -73,8 +86,8 @@ public class ChatClient
                     {
                         System.out.println("[SERVER] " + message.getSender() + " joined");
                     }
-                    else if (message.getType() == MessageType.LEAVE) {
-
+                    else if (message.getType() == MessageType.LEAVE)
+                    {
                         System.out.println("[SERVER] " + message.getSender() + " left");
                     }
                     else if (message.getType() == MessageType.CHAT)

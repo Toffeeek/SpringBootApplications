@@ -45,8 +45,8 @@ public class ChatController
     {
         // Save the username in this WebSocket session's attributes map.
         headerAccessor.getSessionAttributes().put("username", msg.getSender());
-
         return msg;
+
     }
 
 }
