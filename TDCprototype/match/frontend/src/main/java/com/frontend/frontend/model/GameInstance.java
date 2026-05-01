@@ -14,20 +14,22 @@ import java.util.Map;
 public class GameInstance
 {
     private final int mapSize = 10;
-    private String myID;
+    @Setter
+    private int myID;
     @Getter
     private Pair<Integer, Integer> myCoordinates;
-    private Map<String, Pair<Integer, Integer>> enemyCoordinates = new HashMap<>();
+    private Map<Integer, Pair<Integer, Integer>> enemyCoordinates = new HashMap<>();
 
-    public GameInstance(String ID, Pair<Integer, Integer> startingPoint)
+    public GameInstance(int ID, Pair<Integer, Integer> startingPoint)
     {
         this.myID = ID;
         myCoordinates = startingPoint;
     }
 
+
     public void updateFromPacket(Packet p)
     {
-        String packetID = p.getID();
+        int packetID = p.getID();
 
         if (p.getAction() == Action.LEAVE)
         {
@@ -40,7 +42,7 @@ public class GameInstance
             return;
         }
 
-        if (myID.equals(packetID))
+        if (myID == packetID)
         {
             myCoordinates = p.getFinalPosition();
         }
@@ -58,14 +60,47 @@ public class GameInstance
             enemyCoordinates.add(entry.getValue());
         }
 
+        for(int i = 0; i < mapSize + 2; i++)
+        {
+            System.out.print("_");
+        }
+        System.out.println();
         for(int i = 0; i < mapSize; i++)
         {
+            System.out.print("|");
             for(int j = 0; j < mapSize; j++)
             {
-                
+                if(myCoordinates.first == i && myCoordinates.second == j)
+                {
+                    System.out.print("M");
+                }
+                else
+                {
+                    boolean enemyPresent = false;
+                    for(var coordinate : enemyCoordinates)
+                    {
+                        if(coordinate.first == i && coordinate.second == j)
+                        {
+                            enemyPresent = true;
+                            break;
+                        }
+                    }
+                    if(enemyPresent)
+                    {
+                        System.out.print("E");
+                    }
+                    else
+                    {
+                        System.out.print(" ");
+                    }
+                }
             }
+            System.out.println("|");
         }
+        for(int i = 0; i < mapSize + 2; i++)
+        {
+            System.out.print("_");
+        }
+        System.out.println();
     }
-
-
 }

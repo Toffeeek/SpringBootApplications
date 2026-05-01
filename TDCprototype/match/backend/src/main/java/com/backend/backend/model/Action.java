@@ -3,9 +3,13 @@ package com.backend.backend.model;
 public enum Action
 {
     JOIN,
+    PRIVATE_JOIN_CONFIRMATION,
     PRIMARY,
     SECONDARY,
     ULTIMATE,
     MOVE,
-    LEAVE
+    LEAVE,
+    ERROR,
+    PLAYER_COORDINATE,
+    EOF
 }

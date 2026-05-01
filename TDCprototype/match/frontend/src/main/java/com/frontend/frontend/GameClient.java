@@ -11,23 +11,30 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class GameClient
 {
+
     public static void main(String[] args) throws ExecutionException, InterruptedException
     {
-        Scanner scanner = new Scanner(System.in);
+        AtomicInteger myID = new AtomicInteger(-1);
+        CountDownLatch joinConfirmationReceived = new CountDownLatch(1);
 
-        System.out.print("Enter your ID: ");
-        String myID = scanner.nextLine();
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter your username: ");
+        String username = scanner.nextLine();
 
         System.out.print("Enter starting x and y coordinates: ");
         int x = scanner.nextInt();
         int y = scanner.nextInt();
         scanner.nextLine();
 
-        GameInstance game = new GameInstance(myID, new Pair<>(x,y));
+        GameInstance game = new GameInstance(myID.get(), new Pair<>(x,y));
+
 
         WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
         stompClient.setMessageConverter(new JacksonJsonMessageConverter());
@@ -88,29 +95,34 @@ public class GameClient
                                 + "(" + p.getFinalPosition().first + ","
                                 + p.getFinalPosition().second + ")");
                         game.updateFromPacket(p);
+                        game.drawMap();
                     }
                     else if (p.getAction() == Action.LEAVE)
                     {
                         System.out.println("[SERVER] " + p.getID() + " left");
                         game.updateFromPacket(p);
+                        game.drawMap();
                     }
                     else if (p.getAction() == Action.PRIMARY)
                     {
                         System.out.println(p.getID() + " performs a primary attack from "
                                 + "(" + p.getFinalPosition().first + ","
                                 + p.getFinalPosition().second + ")");
+                        game.drawMap();
                     }
                     else if (p.getAction() == Action.SECONDARY)
                     {
                         System.out.println(p.getID() + " performs a secondary attack from "
                                 + "(" + p.getFinalPosition().first + ","
                                 + p.getFinalPosition().second + ")");
+                        game.drawMap();
                     }
                     else if (p.getAction() == Action.ULTIMATE)
                     {
                         System.out.println(p.getID() + " performs an ultimate attack from "
                                 + "(" + p.getFinalPosition().first + ","
                                 + p.getFinalPosition().second + ")");
+                        game.drawMap();
                     }
                     else if (p.getAction() == Action.MOVE)
                     {
@@ -118,21 +130,74 @@ public class GameClient
                                 + "(" + p.getFinalPosition().first + ","
                                 + p.getFinalPosition().second + ")");
                         game.updateFromPacket(p);
+                        game.drawMap();
                     }
                 }
             }
         );
+        session.subscribe(
+                "/user/queue/private",
+                new StompFrameHandler() {
+                    @Override
+                    public Type getPayloadType(StompHeaders headers) {
+                        return Packet.class;
+                    }
 
-        Packet joinPacket = new Packet(myID, new Pair<>(x,y), Action.JOIN);
+                    @Override
+                    public void handleFrame(StompHeaders headers, Object payload) {
+                        Packet p = (Packet) payload;
+
+                        System.out.println("[PRIVATE SERVER MESSAGE]");
+                        System.out.println("Action: " + p.getAction());
+                        System.out.println("ID: " + p.getID());
+
+                        if(p.getAction() == Action.PRIVATE_JOIN_CONFIRMATION)
+                        {
+                            myID.set(p.getID());
+                            game.setMyID(p.getID());
+                            joinConfirmationReceived.countDown();
+                        }
+                        else if(p.getAction() == Action.PLAYER_COORDINATE)
+                        {
+                            game.updateFromPacket(p);
+                        }
+                        else if(p.getAction() == Action.EOF)
+                        {
+
+                        }
+
+
+
+                        // Example: update your local game state if needed
+                        // game.updateFromPacket(p);
+                    }
+                }
+        );
+
+        Packet joinPacket = Packet.builder()
+                .username(username)
+                .finalPosition(new Pair<>(x,y))
+                .action(Action.JOIN)
+                .build();
         session.send("/app/game.joinGame", joinPacket);
 
-//        System.out.println("Type messages. Type /quit to exit.");
+        if(!joinConfirmationReceived.await(5, TimeUnit.SECONDS))
+        {
+            System.out.println("Did not receive private join confirmation from server.");
+            session.disconnect();
+            scanner.close();
+            return;
+        }
+        System.out.println("Your player ID is " + myID.get());
+
+	//        System.out.println("Type messages. Type /quit to exit.");
 
         while (true)
         {
             int choice;
             while(true)
             {
+                game.drawMap();
                 System.out.println
                 (
                     "1. Primary Attack\n" +
@@ -149,19 +214,19 @@ public class GameClient
                 {
                     case 1:
                     {
-                        Packet p = new Packet(myID, game.getMyCoordinates(), Action.PRIMARY);
+                        Packet p = new Packet(myID.get(), game.getMyCoordinates(), Action.PRIMARY);
                         session.send("/app/game.takeAction", p);
                         break;
                     }
                     case 2:
                     {
-                        Packet p = new Packet(myID, game.getMyCoordinates(), Action.SECONDARY);
+                        Packet p = new Packet(myID.get(), game.getMyCoordinates(), Action.SECONDARY);
                         session.send("/app/game.takeAction", p);
                         break;
                     }
                     case 3:
                     {
-                        Packet p = new Packet(myID, game.getMyCoordinates(), Action.ULTIMATE);
+                        Packet p = new Packet(myID.get(), game.getMyCoordinates(), Action.ULTIMATE);
                         session.send("/app/game.takeAction", p);
                         break;
                     }
@@ -172,13 +237,13 @@ public class GameClient
                         int newX = scanner.nextInt();
                         int newY = scanner.nextInt();
                         scanner.nextLine();
-                        Packet p = new Packet(myID, new Pair<>(newX, newY), Action.MOVE);
+                        Packet p = new Packet(myID.get(), new Pair<>(newX, newY), Action.MOVE);
                         session.send("/app/game.takeAction", p);
                         break;
                     }
                     case 5:
                     {
-                        Packet p = new Packet(myID, null, Action.LEAVE);
+                        Packet p = new Packet(myID.get(), null, Action.LEAVE);
                         session.send("/app/game.takeAction", p);
                         session.disconnect();
                         break;

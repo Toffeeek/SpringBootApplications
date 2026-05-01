@@ -52,17 +52,24 @@ public class WebSocketEventListener
     {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
 
-        String username = (String) headerAccessor
+        Object IDAttribute = headerAccessor
                 .getSessionAttributes()
                 .get("ID");
 
-        if(username != null)
+        if(IDAttribute == null)
         {
-            log.info("User disconnected: {}", username);
+            return;
+        }
+
+        int ID = (int) IDAttribute;
+
+        if(ID != -1)
+        {
+            log.info("User disconnected: {}", ID);
 
             var packet = Packet.builder()
                     .action(Action.LEAVE)
-                    .ID(username)
+                    .ID(ID)
                     .build();
 
             messageTemplate.convertAndSend("/match/public", packet);
